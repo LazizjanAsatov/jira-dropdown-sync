@@ -1,0 +1,18 @@
+[project]
+name = "jira-telegram"
+version = "1.0.0"
+description = "Keep a Jira Cloud dropdown in sync with a Telegram bot's Excel report: only adds, never deletes, with ✅/❌ approval in Telegram."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+dependencies = [
+    "requests>=2.31",
+    "openpyxl>=3.1",
+    "python-dotenv>=1.0",
+]
+keywords = ["jira", "jira-cloud", "telegram", "telegram-bot", "automation", "excel", "sync"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
