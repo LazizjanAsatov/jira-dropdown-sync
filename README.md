@@ -1,6 +1,6 @@
 <div align="center">
 
-# jira-telegram
+# jira-dropdown-sync
 
 **Keep a Jira dropdown in sync with the list your Telegram bot already knows, with a human ✅ before anything changes.**
 
@@ -16,7 +16,7 @@
 
 Your team has a Jira select-list field (**Merchant**, **Client**, **Partner**, …) and a reporting bot in a Telegram group that knows the real, current list. Every week someone compares the two and adds the missing options by hand.
 
-**jira-telegram** does that for you. Once a week it asks the bot for its Excel report, works out which names Jira doesn't have yet, lets the group approve them with one tap, and adds them. It **never deletes, renames or reorders** anything.
+**jira-dropdown-sync** does that for you. Once a week it asks the bot for its Excel report, works out which names Jira doesn't have yet, lets the group approve them with one tap, and adds them. It **never deletes, renames or reorders** anything.
 
 ```text
 Mon 10:00   🤖 SyncBot     /report@ReportBot
@@ -170,18 +170,18 @@ Every run is logged to `logs/merchant_sync.log`.
 **Windows (Task Scheduler)**, every Monday at 10:00. The task catches up if the PC was off, waits for the network, never runs twice, and is allowed 12 hours:
 
 ```powershell
-$dir = "C:\path\to\jira-telegram"
+$dir = "C:\path\to\jira-dropdown-sync"
 $action   = New-ScheduledTaskAction -Execute "pyw.exe" -Argument "merchant_sync.py" -WorkingDirectory $dir
 $trigger  = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 10:00
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable `
             -ExecutionTimeLimit (New-TimeSpan -Hours 12) -MultipleInstances IgnoreNew
-Register-ScheduledTask -TaskName "jira-telegram sync" -Action $action -Trigger $trigger -Settings $settings
+Register-ScheduledTask -TaskName "jira-dropdown-sync sync" -Action $action -Trigger $trigger -Settings $settings
 ```
 
 **Linux / macOS (cron):**
 
 ```cron
-0 10 * * 1  cd /opt/jira-telegram && python3 merchant_sync.py
+0 10 * * 1  cd /opt/jira-dropdown-sync && python3 merchant_sync.py
 ```
 
 The code is plain Python and is tested on Windows.

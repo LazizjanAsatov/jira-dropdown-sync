@@ -1,5 +1,5 @@
 [project]
-name = "jira-telegram"
+name = "jira-dropdown-sync"
 version = "1.0.0"
 description = "Keep a Jira Cloud dropdown in sync with a Telegram bot's Excel report: only adds, never deletes, with ✅/❌ approval in Telegram."
 readme = "README.md"
