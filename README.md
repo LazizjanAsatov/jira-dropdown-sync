@@ -5,7 +5,7 @@
 **Keep a Jira dropdown in sync with the list your Telegram bot already knows, with a human ✅ before anything changes.**
 
 ![Python](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-145%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-154%20passing-2ea44f)
 ![Jira Cloud](https://img.shields.io/badge/Jira-Cloud-0052CC?logo=jira&logoColor=white)
 ![Telegram](https://img.shields.io/badge/Telegram-Bot%20API%2010-26A5E4?logo=telegram&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -38,6 +38,7 @@ Mon 10:42   👤 Alex taps ✅
 - **✅ Human in the loop.** New names are posted with ✅ / ❌ buttons, and Jira only changes after a tap. You can switch this off for fully automatic runs.
 - **➕ Only adds.** It reads the field and adds missing options in one request. It never deletes, renames, reorders, enables or disables an option, and never touches tickets or other fields. A test checks that.
 - **🧠 Smart matching.** Upper/lowercase, extra spaces and words you choose (your company tag, `Ltd`, `LLC`, …) never make a name "new". Variant markers can be dropped, so `Nova PROMO` merges into `Nova`.
+- **🗂️ Big groups stay one option.** For groups you list, only the group's name goes into Jira, not one option per merchant in it.
 - **🔍 Strict with the report.** Columns are found by their header and the rows are checked against the `Total — N` row. A damaged file is rejected. If anything looks wrong, nothing is added and the group is told why.
 - **🛡️ Hard to break.** It waits out network drops, Telegram hiccups and a sleeping PC. Reads are retried, writes never are. Only one run happens at a time, and buttons are never left pressable when a run ends.
 - **🪶 Zero infrastructure.** One Python script plus Windows Task Scheduler or cron. No server, no webhook, no database.
@@ -112,6 +113,7 @@ Everything lives in `.env`. Key names aren't case-sensitive.
 | `MERCHANT_COLUMN` / `GROUP_COLUMN` | | Column headers in the Excel | `Merchant` / `Group` (default) |
 | `DROP_WORDS` | | Words removed from merchant names, comma-separated | `PROMO` |
 | `IGNORE_WORDS` | | Words that don't make two names different, comma-separated | `ACME, Ltd, LLC` |
+| `GROUPS_WITHOUT_MERCHANTS` | | Groups added as the group name only, without their merchants, comma-separated | `Orbit Group, Zenith Group` |
 | `CHECK_TOTAL_ROW` | | Rows must match a `Total — N` row under the table | `True` (default) |
 
 ## 🧠 Name rules
@@ -130,6 +132,19 @@ With `DROP_WORDS=PROMO` and `IGNORE_WORDS=ACME`:
 - Groups are used exactly as written (only placeholders are skipped).
 - A **disabled** option in Jira counts as already there, so it isn't re-added or re-enabled.
 - Words are matched as whole words: `ACME` never matches inside `ACMEPay`.
+
+### Groups without their merchants
+
+With `GROUPS_WITHOUT_MERCHANTS=Orbit Group`, a big group becomes one option instead of one per merchant:
+
+| In the report (merchant, group) | Added to Jira as | Why |
+|---|---|---|
+| `Nova Bet ACME`, `Orbit Group` | `Orbit Group` | only the group's name, its merchants are skipped |
+| `Orbit Pay ACME`, `— no group —` | `Orbit Pay ACME` | the Group column decides who is in a group, not the name |
+
+- A listed group matches like any other name (upper/lowercase, spaces and `IGNORE_WORDS` don't matter), but it must be the whole group name: `Orbit` doesn't match `Orbit Group`.
+- If a listed group isn't in the report (a typo, or the group was renamed), the run logs a warning.
+- Merchants of a listed group that are already in Jira stay there. It only stops new ones from being added.
 
 ## ✅ Confirmation mode
 
@@ -178,6 +193,14 @@ $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAv
 Register-ScheduledTask -TaskName "jira-dropdown-sync sync" -Action $action -Trigger $trigger -Settings $settings
 ```
 
+**Prefer a batch file?** Point the task at `run.bat` instead. It starts from its own folder, finds Python even when the task doesn't have it on its PATH, and hands back the exit code, so *Last Run Result* shows the codes listed under Commands:
+
+```powershell
+$action = New-ScheduledTaskAction -Execute "$dir\run.bat" -WorkingDirectory $dir
+```
+
+Unlike `pyw.exe`, it opens a console window that stays until the run ends (in confirmation mode, until someone answers). Minimize it instead of closing it, or pick *Run whether user is logged on or not* so no window opens.
+
 **Linux / macOS (cron):**
 
 ```cron
@@ -192,7 +215,7 @@ The code is plain Python and is tested on Windows.
 python -m pytest
 ```
 
-There are 145 tests, and they run in about 2 seconds. Telegram and Jira are replaced by in-memory fakes that answer the real API paths with the real JSON shapes, so the tests never send anything.
+There are 154 tests, and they run in about 2 seconds. Telegram and Jira are replaced by in-memory fakes that answer the real API paths with the real JSON shapes, so the tests never send anything.
 
 ## 📁 Project layout
 
@@ -201,6 +224,7 @@ merchant_sync.py   the run: settings, comparing, confirmation, notes, CLI
 names.py           reading the Excel and the name rules
 jira_field.py      reading and adding the field's options (GET + POST only)
 telegram_bot.py    asking the report bot, buttons, waiting, downloading
+run.bat            starts the run from its own folder, for Task Scheduler
 tests/             unit and end-to-end tests against fake Telegram and Jira
 ```
 

@@ -1,5 +1,7 @@
 """Name rules: which names from the report go to the Jira field. All names here are made up."""
+import logging
 import zipfile
+from dataclasses import replace
 
 import pytest
 from openpyxl import Workbook
@@ -124,6 +126,65 @@ def test_names_that_differ_only_by_ignore_words_count_once_and_that_spelling_is_
     ])
 
     assert read_names(path, RULES) == ["Blue Harbor ACME", "Vega Play ACME", "Kite Ltd (x.com) ACME", "Kite Group"]
+
+
+# --- groups whose merchants are left out (GROUPS_WITHOUT_MERCHANTS) ---------------------------------------
+
+
+def test_a_group_listed_without_merchants_gives_only_the_group_name(bot_excel):
+    path = bot_excel([
+        ("Nova Bet ACME", "Orbit Group"),
+        ("Blue Harbor ACME", "Vega Play"),
+        ("Lumen Pay ACME PROMO", "Orbit Group"),
+    ])
+
+    names = read_names(path, replace(RULES, groups_without_merchants=("Orbit Group",)))
+
+    assert names == ["Orbit Group", "Blue Harbor ACME", "Vega Play"]
+
+
+@pytest.mark.parametrize("listed", ["orbit group", "  ORBIT   Group ", "Orbit ACME Group"])
+def test_a_listed_group_matches_whatever_its_case_spacing_or_ignore_words(bot_excel, listed):
+    path = bot_excel([("Nova Bet ACME", "Orbit Group")])
+
+    assert read_names(path, replace(RULES, groups_without_merchants=(listed,))) == ["Orbit Group"]
+
+
+def test_a_listed_group_must_be_the_whole_group_name(bot_excel):
+    path = bot_excel([("Nova Bet ACME", "Orbit Group")])
+
+    assert read_names(path, replace(RULES, groups_without_merchants=("Orbit",))) == ["Nova Bet ACME", "Orbit Group"]
+
+
+def test_the_group_column_decides_who_is_left_out_not_the_merchant_name(bot_excel):
+    path = bot_excel([
+        ("Orbit Pay ACME", NO_GROUP),
+        ("Orbit Games ACME", "Vega Play"),
+        ("Nova Bet ACME", "Orbit Group"),
+    ])
+
+    names = read_names(path, replace(RULES, groups_without_merchants=("Orbit Group",)))
+
+    assert names == ["Orbit Pay ACME", "Orbit Games ACME", "Vega Play", "Orbit Group"]
+
+
+def test_a_listed_name_made_only_of_ignore_words_never_leaves_out_merchants_without_a_group(bot_excel):
+    path = bot_excel([("Lumen Pay ACME", NO_GROUP), ("Nova Bet ACME", "Orbit Group")])
+
+    names = read_names(path, replace(RULES, groups_without_merchants=("ACME",)))
+
+    assert names == ["Lumen Pay ACME", "Nova Bet ACME", "Orbit Group"]
+
+
+def test_a_listed_group_that_is_not_in_the_report_is_warned_about(bot_excel, caplog):
+    path = bot_excel([("Nova Bet ACME", "Orbit Group"), ("Lumen Pay ACME", NO_GROUP)])
+
+    with caplog.at_level(logging.WARNING):
+        names = read_names(path, replace(RULES, groups_without_merchants=("Orbit Group", "Zenith Group")))
+
+    assert names == ["Orbit Group", "Lumen Pay ACME"]
+    [warning] = [record.getMessage() for record in caplog.records if record.levelno == logging.WARNING]
+    assert "Zenith Group" in warning
 
 
 def test_header_is_found_even_when_the_title_block_is_gone(bot_excel):

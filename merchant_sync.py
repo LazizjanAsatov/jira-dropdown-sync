@@ -116,6 +116,7 @@ def load_settings(env_path: Path) -> Settings:
         name_rules=NameRules(
             drop_words=_words(values, "DROP_WORDS"),
             ignore_words=_words(values, "IGNORE_WORDS"),
+            groups_without_merchants=_words(values, "GROUPS_WITHOUT_MERCHANTS"),
             merchant_column=values.get("MERCHANT_COLUMN") or defaults.merchant_column,
             group_column=values.get("GROUP_COLUMN") or defaults.group_column,
             check_total_row=_flag(values, "CHECK_TOTAL_ROW", default=defaults.check_total_row),

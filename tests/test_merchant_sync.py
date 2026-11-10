@@ -83,11 +83,11 @@ class World:
         doc = self.tg.document("Merchant report_2026-11-01.xlsx", self.excel_bytes)
         return [self.tg.message(GROUP, REPORT_BOT, document=doc)]
 
-    def run(self, confirm=False, now=MONDAY_10, **options):
+    def run(self, confirm=False, now=MONDAY_10, rules=RULES, **options):
         telegram = TelegramBot(TOKEN, session=self.tg, clock=self.tg.clock, sleep=lambda s: None)
         jira = JiraField(SETTINGS.jira_url, SETTINGS.jira_email, SETTINGS.jira_token, session=self.jira,
                          sleep=lambda s: None)
-        settings = replace(SETTINGS, by_confirmation=confirm)
+        settings = replace(SETTINGS, by_confirmation=confirm, name_rules=rules)
         return run_and_report(settings, telegram, jira, downloads=self.tmp_path / "downloads",
                               now=lambda: now, **options)
 
@@ -289,6 +289,20 @@ def test_confirmation_mode_asks_first_and_adds_only_after_add_is_pressed(world, 
     assert [m["text"] for m in w.tg.sent] == [COMMAND, note]  # the question was turned into the result
     assert "reply_markup" not in w.tg.sent[-1]
     assert "@alex" in note
+
+
+def test_merchants_of_a_group_listed_without_merchants_are_never_offered_or_added(world, bot_excel):
+    w = world(jira_options=["Blue Harbor"])
+    w.bot_sends(bot_excel(ROWS))
+    w.press_when_asked("add", ALEX)
+
+    code, note = w.run(confirm=True, rules=replace(RULES, groups_without_merchants=("Orbit Group",)))
+
+    assert code == 0
+    [question] = w.questions
+    assert "Orbit Group" in question["text"]
+    assert "Nova Bet" not in question["text"] and "Nova Bet" not in note
+    assert w.jira.option_values() == ["Blue Harbor", "Vega Play", "Orbit Group", "Lumen Pay ACME"]
 
 
 def test_pressing_dont_add_adds_nothing(world, bot_excel):
@@ -538,14 +552,16 @@ def test_load_settings_reads_an_env_file_saved_with_a_byte_order_mark(tmp_path):
 def test_load_settings_reads_the_env_file(tmp_path):
     env = tmp_path / ".env"
     env.write_text(ENV + "REPORT_FILE_PREFIX=Merchant report\nJIRA_FIELD=Client\nDROP_WORDS=PROMO, VIP\n"
-                   "IGNORE_WORDS=ACME,Ltd , N.V.\nMERCHANT_COLUMN=Client\nGROUP_COLUMN=Holding\n"
-                   "CHECK_TOTAL_ROW=no\nBY_CONFIRMATION=False\n", encoding="utf-8")
+                   "IGNORE_WORDS=ACME,Ltd , N.V.\nGROUPS_WITHOUT_MERCHANTS=Orbit Group , Zenith ACME Group\n"
+                   "MERCHANT_COLUMN=Client\nGROUP_COLUMN=Holding\nCHECK_TOTAL_ROW=no\nBY_CONFIRMATION=False\n",
+                   encoding="utf-8")
 
     assert load_settings(env) == Settings(
         telegram_token="123:abc", report_bot="ReportBot", group_id=-1001234567890, report_command="/report",
         jira_url="https://example.atlassian.net", jira_email="ops@example.com", jira_token="tok",
         report_file_prefix="Merchant report", jira_field="Client",
         name_rules=NameRules(drop_words=("PROMO", "VIP"), ignore_words=("ACME", "Ltd", "N.V."),
+                             groups_without_merchants=("Orbit Group", "Zenith ACME Group"),
                              merchant_column="Client", group_column="Holding", check_total_row=False),
         by_confirmation=False,
     )
