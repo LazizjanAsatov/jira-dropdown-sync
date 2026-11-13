@@ -1,10 +1,10 @@
 """Turn a reporting bot's Excel (one row per merchant, with its group) into option names for a Jira field.
 
 The rules are configurable (see NameRules):
-- drop_words are removed from merchant names, so "Nova PROMO" merges into "Nova".
+- drop_words are removed from merchant and group names, so "Nova PROMO" merges into "Nova".
 - ignore_words don't make two names different ("Nova ACME" is the same as "Nova"), but they're kept
   in the names that get added; when two spellings differ only by them, the one that has them wins.
-- Groups are used exactly as written; placeholders like "— no group —" and empty cells are skipped.
+- Groups are used as written apart from drop_words; placeholders like "— no group —" and empty cells are skipped.
 - groups_without_merchants give only the group's name: the merchants in them (by the group column) are left out.
 - Upper/lowercase and extra spaces never make two names different.
 """
@@ -37,9 +37,10 @@ class ExcelFormatError(ValueError):
 
 @dataclass(frozen=True)
 class NameRules:
-    drop_words: tuple[str, ...] = ()     # removed from merchant names, e.g. a marker for a variant of a merchant
+    drop_words: tuple[str, ...] = ()     # removed from merchant and group names, e.g. a variant marker or "Group"
     ignore_words: tuple[str, ...] = ()   # never make two names different, e.g. your own company tag or "Ltd"
     groups_without_merchants: tuple[str, ...] = ()  # these groups give only their own name, not their merchants'
+    add_group_names: bool = True         # False: only merchants are added, never a group's name
     merchant_column: str = "Merchant"    # header of the merchant column
     group_column: str = "Group"          # header of the group column
     check_total_row: bool = True         # the rows read must match a "Total — N ..." row under the table
@@ -57,28 +58,38 @@ def read_names(path: str | Path, rules: NameRules = NameRules()) -> list[str]:
     """Merchant and group names from the report, cleaned and without repeats, in file order.
 
     A group in rules.groups_without_merchants gives only its own name: its merchants are left out.
+    With rules.add_group_names off, no group's name is used at all, so such a group gives nothing.
     """
     drop = _words_pattern(tuple(rules.drop_words))
-    # a listed name made only of ignore words would otherwise match every merchant without a group
-    without_merchants = {match_key(group, rules.ignore_words) for group in rules.groups_without_merchants} - {""}
+    # drop words are taken out of the listed names too, so "Alpha Group" and "Alpha" both match the group.
+    # A listed name made only of ignore words would otherwise match every merchant without a group.
+    without_merchants = {_listed_key(group, drop, rules.ignore_words) for group in rules.groups_without_merchants} - {""}
     found: set[str] = set()
     picked: dict[str, str] = {}
     for merchant, group in _table_rows(Path(path), rules):
-        group_name = _clean_group(group)
+        group_name = _drop(_clean_group(group), drop)
         group_key = match_key(group_name, rules.ignore_words)
         if group_key in without_merchants:
             found.add(group_key)
         else:
-            merchant_name = _tidy(drop.sub(" ", merchant)) if drop else merchant
-            _keep(picked, merchant_name, rules.ignore_words)
-        _keep(picked, group_name, rules.ignore_words)
+            _keep(picked, _drop(merchant, drop), rules.ignore_words)
+        if rules.add_group_names:
+            _keep(picked, group_name, rules.ignore_words)
     if not picked:
         raise ExcelFormatError(f"{Path(path).name}: no merchants under the header row")
     for group in rules.groups_without_merchants:
-        if match_key(group, rules.ignore_words) not in found:  # a typo, or the group was renamed
+        if _listed_key(group, drop, rules.ignore_words) not in found:  # a typo, or the group was renamed
             log.warning("GROUPS_WITHOUT_MERCHANTS lists %r, but %s has no group by that name, "
                         "so none of its merchants are left out. Check the spelling in .env.", group, Path(path).name)
     return list(picked.values())
+
+
+def _drop(name: str, drop: re.Pattern | None) -> str:
+    return _tidy(drop.sub(" ", name)) if drop and name else name
+
+
+def _listed_key(group: str, drop: re.Pattern | None, ignore_words: tuple[str, ...]) -> str:
+    return match_key(_drop(_tidy(group), drop), ignore_words)
 
 
 def _keep(picked: dict[str, str], name: str, ignore_words: tuple[str, ...]) -> None:

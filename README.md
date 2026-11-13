@@ -5,7 +5,7 @@
 **Keep a Jira dropdown in sync with the list your Telegram bot already knows, with a human ✅ before anything changes.**
 
 ![Python](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-154%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-159%20passing-2ea44f)
 ![Jira Cloud](https://img.shields.io/badge/Jira-Cloud-0052CC?logo=jira&logoColor=white)
 ![Telegram](https://img.shields.io/badge/Telegram-Bot%20API%2010-26A5E4?logo=telegram&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -111,9 +111,10 @@ Everything lives in `.env`. Key names aren't case-sensitive.
 | `BY_CONFIRMATION` | | Ask in the group before adding | `True` (default) |
 | `REPORT_FILE_PREFIX` | | Only take files whose name starts with this | *(empty: any `.xlsx`)* |
 | `MERCHANT_COLUMN` / `GROUP_COLUMN` | | Column headers in the Excel | `Merchant` / `Group` (default) |
-| `DROP_WORDS` | | Words removed from merchant names, comma-separated | `PROMO` |
+| `DROP_WORDS` | | Words removed from merchant and group names, comma-separated | `PROMO` |
 | `IGNORE_WORDS` | | Words that don't make two names different, comma-separated | `ACME, Ltd, LLC` |
 | `GROUPS_WITHOUT_MERCHANTS` | | Groups added as the group name only, without their merchants, comma-separated | `Orbit Group, Zenith Group` |
+| `ADD_GROUP_NAMES` | | Add group names too. `False`: only merchants are added, never a group's name | `True` (default) |
 | `CHECK_TOTAL_ROW` | | Rows must match a `Total — N` row under the table | `True` (default) |
 
 ## 🧠 Name rules
@@ -144,6 +145,7 @@ With `GROUPS_WITHOUT_MERCHANTS=Orbit Group`, a big group becomes one option inst
 
 - A listed group matches like any other name (upper/lowercase, spaces and `IGNORE_WORDS` don't matter), but it must be the whole group name: `Orbit` doesn't match `Orbit Group`.
 - If a listed group isn't in the report (a typo, or the group was renamed), the run logs a warning.
+- With `ADD_GROUP_NAMES=False` no group name is added at all, so a listed group adds nothing: neither its name nor its merchants.
 - Merchants of a listed group that are already in Jira stay there. It only stops new ones from being added.
 
 ## ✅ Confirmation mode
@@ -215,7 +217,7 @@ The code is plain Python and is tested on Windows.
 python -m pytest
 ```
 
-There are 154 tests, and they run in about 2 seconds. Telegram and Jira are replaced by in-memory fakes that answer the real API paths with the real JSON shapes, so the tests never send anything.
+There are 159 tests, and they run in about 2 seconds. Telegram and Jira are replaced by in-memory fakes that answer the real API paths with the real JSON shapes, so the tests never send anything.
 
 ## 📁 Project layout
 

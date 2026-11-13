@@ -277,3 +277,37 @@ def test_ignore_words_can_contain_dots():
 
 def test_without_ignore_words_only_case_and_spaces_are_ignored():
     assert match_key("  Blue  HARBOR ACME ") == "blue harbor acme"
+
+
+def test_drop_words_are_removed_from_group_names_too(bot_excel):
+    rules = NameRules(drop_words=("Group",))
+    path = bot_excel([("Comeon Casino", "Comeon Group"), ("Heycasino", "Heycasino GROUP"), ("Nova Bet", NO_GROUP)])
+
+    assert read_names(path, rules) == ["Comeon Casino", "Comeon", "Heycasino", "Nova Bet"]
+
+
+@pytest.mark.parametrize("listed", ["Alpha Group", "Alpha"])
+def test_groups_without_merchants_match_with_or_without_the_dropped_words(bot_excel, listed, caplog):
+    rules = NameRules(drop_words=("Group",), groups_without_merchants=(listed,))
+    path = bot_excel([("Alpha Bet", "Alpha Group"), ("Alpha Play", "Alpha Group"), ("Nova Bet", "Nova Group")])
+
+    with caplog.at_level(logging.WARNING):
+        assert read_names(path, rules) == ["Alpha", "Nova Bet", "Nova"]
+    assert not caplog.records
+
+
+def test_group_names_can_be_left_out_so_only_merchants_are_added(bot_excel):
+    path = bot_excel([("Nova Bet ACME", "Orbit Group"), ("Lumen Pay ACME", NO_GROUP), ("Vega Play ACME", "Vega Play")])
+
+    names = read_names(path, replace(RULES, add_group_names=False))
+
+    assert names == ["Nova Bet ACME", "Lumen Pay ACME", "Vega Play ACME"]
+
+
+def test_without_group_names_a_listed_group_gives_nothing_at_all(bot_excel, caplog):
+    path = bot_excel([("Nova Bet ACME", "Orbit Group"), ("Blue Harbor ACME", "Vega Play")])
+    rules = replace(RULES, add_group_names=False, groups_without_merchants=("Orbit Group",))
+
+    with caplog.at_level(logging.WARNING):
+        assert read_names(path, rules) == ["Blue Harbor ACME"]
+    assert not caplog.records
