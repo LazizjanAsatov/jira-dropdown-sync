@@ -187,6 +187,23 @@ def test_a_listed_group_that_is_not_in_the_report_is_warned_about(bot_excel, cap
     assert "Zenith Group" in warning
 
 
+def test_group_names_can_be_left_out(bot_excel):
+    path = bot_excel([("Nova Bet ACME", "Nova Group"), ("Lumen Pay ACME", NO_GROUP)])
+
+    assert read_names(path, replace(RULES, add_group_names=False)) == ["Nova Bet ACME", "Lumen Pay ACME"]
+
+
+def test_without_group_names_a_listed_group_still_gives_its_name(bot_excel):
+    path = bot_excel([
+        ("Nova Bet ACME", "Orbit Group"),
+        ("Blue Harbor ACME", "Vega Play"),
+    ])
+
+    names = read_names(path, replace(RULES, groups_without_merchants=("Orbit Group",), add_group_names=False))
+
+    assert names == ["Orbit Group", "Blue Harbor ACME"]
+
+
 def test_header_is_found_even_when_the_title_block_is_gone(bot_excel):
     path = bot_excel([("Lumen Pay ACME", "Lumen Group")], title_block=False)
 
@@ -293,21 +310,4 @@ def test_groups_without_merchants_match_with_or_without_the_dropped_words(bot_ex
 
     with caplog.at_level(logging.WARNING):
         assert read_names(path, rules) == ["Alpha", "Nova Bet", "Nova"]
-    assert not caplog.records
-
-
-def test_group_names_can_be_left_out_so_only_merchants_are_added(bot_excel):
-    path = bot_excel([("Nova Bet ACME", "Orbit Group"), ("Lumen Pay ACME", NO_GROUP), ("Vega Play ACME", "Vega Play")])
-
-    names = read_names(path, replace(RULES, add_group_names=False))
-
-    assert names == ["Nova Bet ACME", "Lumen Pay ACME", "Vega Play ACME"]
-
-
-def test_without_group_names_a_listed_group_gives_nothing_at_all(bot_excel, caplog):
-    path = bot_excel([("Nova Bet ACME", "Orbit Group"), ("Blue Harbor ACME", "Vega Play")])
-    rules = replace(RULES, add_group_names=False, groups_without_merchants=("Orbit Group",))
-
-    with caplog.at_level(logging.WARNING):
-        assert read_names(path, rules) == ["Blue Harbor ACME"]
     assert not caplog.records

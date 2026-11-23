@@ -6,6 +6,7 @@ The rules are configurable (see NameRules):
   in the names that get added; when two spellings differ only by them, the one that has them wins.
 - Groups are used as written apart from drop_words; placeholders like "— no group —" and empty cells are skipped.
 - groups_without_merchants give only the group's name: the merchants in them (by the group column) are left out.
+- add_group_names=False leaves out the other groups' names, so only merchants (and those listed groups) are added.
 - Upper/lowercase and extra spaces never make two names different.
 """
 import logging
@@ -40,7 +41,7 @@ class NameRules:
     drop_words: tuple[str, ...] = ()     # removed from merchant and group names, e.g. a variant marker or "Group"
     ignore_words: tuple[str, ...] = ()   # never make two names different, e.g. your own company tag or "Ltd"
     groups_without_merchants: tuple[str, ...] = ()  # these groups give only their own name, not their merchants'
-    add_group_names: bool = True         # False: only merchants are added, never a group's name
+    add_group_names: bool = True         # False: only groups_without_merchants give a group name
     merchant_column: str = "Merchant"    # header of the merchant column
     group_column: str = "Group"          # header of the group column
     check_total_row: bool = True         # the rows read must match a "Total — N ..." row under the table
@@ -58,7 +59,7 @@ def read_names(path: str | Path, rules: NameRules = NameRules()) -> list[str]:
     """Merchant and group names from the report, cleaned and without repeats, in file order.
 
     A group in rules.groups_without_merchants gives only its own name: its merchants are left out.
-    With rules.add_group_names off, no group's name is used at all, so such a group gives nothing.
+    With rules.add_group_names off, only those listed groups give a group name; the others give merchants only.
     """
     drop = _words_pattern(tuple(rules.drop_words))
     # drop words are taken out of the listed names too, so "Alpha Group" and "Alpha" both match the group.
@@ -71,10 +72,11 @@ def read_names(path: str | Path, rules: NameRules = NameRules()) -> list[str]:
         group_key = match_key(group_name, rules.ignore_words)
         if group_key in without_merchants:
             found.add(group_key)
+            _keep(picked, group_name, rules.ignore_words)  # the group stands in for its merchants
         else:
             _keep(picked, _drop(merchant, drop), rules.ignore_words)
-        if rules.add_group_names:
-            _keep(picked, group_name, rules.ignore_words)
+            if rules.add_group_names:
+                _keep(picked, group_name, rules.ignore_words)
     if not picked:
         raise ExcelFormatError(f"{Path(path).name}: no merchants under the header row")
     for group in rules.groups_without_merchants:

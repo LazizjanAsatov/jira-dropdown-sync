@@ -553,8 +553,9 @@ def test_load_settings_reads_the_env_file(tmp_path):
     env = tmp_path / ".env"
     env.write_text(ENV + "REPORT_FILE_PREFIX=Merchant report\nJIRA_FIELD=Client\nDROP_WORDS=PROMO, VIP\n"
                    "IGNORE_WORDS=ACME,Ltd , N.V.\nGROUPS_WITHOUT_MERCHANTS=Orbit Group , Zenith ACME Group\n"
-                   "MERCHANT_COLUMN=Client\nGROUP_COLUMN=Holding\nCHECK_TOTAL_ROW=no\nADD_GROUP_NAMES=no\n"
-                   "BY_CONFIRMATION=False\n", encoding="utf-8")
+                   "MERCHANT_COLUMN=Client\nGROUP_COLUMN=Holding\nCHECK_TOTAL_ROW=no\nBY_CONFIRMATION=False\n"
+                   "ADD_GROUP_NAMES=false\n",
+                   encoding="utf-8")
 
     assert load_settings(env) == Settings(
         telegram_token="123:abc", report_bot="ReportBot", group_id=-1001234567890, report_command="/report",
