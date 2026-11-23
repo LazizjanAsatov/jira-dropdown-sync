@@ -114,6 +114,7 @@ Everything lives in `.env`. Key names aren't case-sensitive.
 | `DROP_WORDS` | | Words removed from merchant names, comma-separated | `PROMO` |
 | `IGNORE_WORDS` | | Words that don't make two names different, comma-separated | `ACME, Ltd, LLC` |
 | `GROUPS_WITHOUT_MERCHANTS` | | Groups added as the group name only, without their merchants, comma-separated | `Orbit Group, Zenith Group` |
+| `ADD_GROUP_NAMES` | | Add group names too; `False` adds only the groups in `GROUPS_WITHOUT_MERCHANTS` | `True` (default) |
 | `CHECK_TOTAL_ROW` | | Rows must match a `Total — N` row under the table | `True` (default) |
 
 ## 🧠 Name rules
@@ -129,7 +130,7 @@ With `DROP_WORDS=PROMO` and `IGNORE_WORDS=ACME`:
 | `Vega Play` and `Vega Play ACME` | `Vega Play ACME` | same name, so it's added once, using the spelling with the ignore word |
 | Group `— no group —` | *(nothing)* | placeholders and empty cells are skipped |
 
-- Groups are used exactly as written (only placeholders are skipped).
+- Groups are used exactly as written (only placeholders are skipped). With `ADD_GROUP_NAMES=False` only merchants are added, plus the groups in `GROUPS_WITHOUT_MERCHANTS`.
 - A **disabled** option in Jira counts as already there, so it isn't re-added or re-enabled.
 - Words are matched as whole words: `ACME` never matches inside `ACMEPay`.
 

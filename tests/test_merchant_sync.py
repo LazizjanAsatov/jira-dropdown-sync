@@ -553,7 +553,8 @@ def test_load_settings_reads_the_env_file(tmp_path):
     env = tmp_path / ".env"
     env.write_text(ENV + "REPORT_FILE_PREFIX=Merchant report\nJIRA_FIELD=Client\nDROP_WORDS=PROMO, VIP\n"
                    "IGNORE_WORDS=ACME,Ltd , N.V.\nGROUPS_WITHOUT_MERCHANTS=Orbit Group , Zenith ACME Group\n"
-                   "MERCHANT_COLUMN=Client\nGROUP_COLUMN=Holding\nCHECK_TOTAL_ROW=no\nBY_CONFIRMATION=False\n",
+                   "MERCHANT_COLUMN=Client\nGROUP_COLUMN=Holding\nCHECK_TOTAL_ROW=no\nBY_CONFIRMATION=False\n"
+                   "ADD_GROUP_NAMES=false\n",
                    encoding="utf-8")
 
     assert load_settings(env) == Settings(
@@ -561,7 +562,7 @@ def test_load_settings_reads_the_env_file(tmp_path):
         jira_url="https://example.atlassian.net", jira_email="ops@example.com", jira_token="tok",
         report_file_prefix="Merchant report", jira_field="Client",
         name_rules=NameRules(drop_words=("PROMO", "VIP"), ignore_words=("ACME", "Ltd", "N.V."),
-                             groups_without_merchants=("Orbit Group", "Zenith ACME Group"),
+                             groups_without_merchants=("Orbit Group", "Zenith ACME Group"), add_group_names=False,
                              merchant_column="Client", group_column="Holding", check_total_row=False),
         by_confirmation=False,
     )
